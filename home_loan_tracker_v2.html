@@ -808,6 +808,70 @@ function buildAmortization(startBal, rate, emi, startDate, maxMonths=360) {
 }
 
 // =====================================================
+// CURRENT MONTH INTEREST — Daily Segment Method
+// Matches bank statement: Balance × Rate × Days / 365
+// for each segment where balance was constant within the month
+// =====================================================
+function calcCurrentMonthInterest() {
+  if (!state.loan.amount || !state.loan.startDate) return 0;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1); // exclusive
+
+  // Build a timeline of (date, balance) change-points from the loan start
+  // Each entry: { date: Date, balance: number }
+  let bal = state.loan.amount;
+  let currentRate = state.loan.rate;
+  const changePoints = [{ date: new Date(state.loan.startDate + 'T00:00:00'), balance: bal }];
+
+  for (const t of state.transactions) {
+    const tDate = new Date(t.date + 'T00:00:00');
+    if (t.type === 'ratechange') { currentRate = t.newRate; continue; }
+    if (t.type === 'emi') {
+      // interest portion doesn't change principal for this purpose — only prinComp does
+      // We replicate the enrichTransactions logic for balance
+      const prevPoint = changePoints[changePoints.length - 1];
+      const prevDate = prevPoint.date;
+      const days = Math.max(1, Math.round((tDate - prevDate) / 86400000));
+      const intC = Math.min(calcInterestForDays(bal, currentRate, days), t.amount);
+      const prinC = Math.max(0, t.amount - intC);
+      bal = Math.max(0, bal - prinC);
+    } else if (t.type === 'prepay') {
+      bal = Math.max(0, bal - t.amount);
+    } else if (t.type === 'interest' || t.type === 'charge') {
+      bal = bal + t.amount;
+    } else if (t.type === 'interest_cr') {
+      bal = Math.max(0, bal - t.amount);
+    }
+    changePoints.push({ date: tDate, balance: bal });
+  }
+  // Add end-of-month sentinel
+  changePoints.push({ date: monthEnd, balance: bal });
+
+  // Now sum interest for each segment that overlaps with this month
+  let totalInterest = 0;
+  for (let i = 0; i < changePoints.length - 1; i++) {
+    const segStart = changePoints[i].date;
+    const segEnd   = changePoints[i + 1].date;
+    const segBal   = changePoints[i].balance;
+
+    // Clip segment to [monthStart, monthEnd)
+    const clipStart = segStart < monthStart ? monthStart : segStart;
+    const clipEnd   = segEnd   > monthEnd   ? monthEnd   : segEnd;
+
+    if (clipStart >= clipEnd) continue; // no overlap
+
+    const days = Math.round((clipEnd - clipStart) / 86400000);
+    if (days <= 0) continue;
+
+    totalInterest += calcInterestForDays(segBal, currentRate, days);
+  }
+
+  return totalInterest;
+}
+
+// =====================================================
 // UI HELPERS
 // =====================================================
 function toast(msg, type='success') {
@@ -892,13 +956,11 @@ function renderDashboard() {
     options: { responsive:true, plugins:{ legend:{ labels:{ color:'#7a8da8', font:{family:'DM Mono',size:11} } } } }
   });
 
-  // Monthly breakdown
-  const mr = calcMonthlyRate(state.loan.rate);
-  const days30 = 30;
-  const monthlyInt = calcInterestForDays(outstanding, state.loan.rate, days30);
+  // Monthly breakdown — actual daily-balance method (matches bank statement)
+  const monthlyInt = calcCurrentMonthInterest();
   const monthlyPrin = state.loan.emi - monthlyInt;
   document.getElementById('monthlyBreakdown').innerHTML = `
-    <div class="mini-stat"><div class="mini-stat-label">~Monthly Interest</div><div class="mini-stat-val" style="color:var(--accent3)">${fmt(monthlyInt)}</div></div>
+    <div class="mini-stat"><div class="mini-stat-label">This Month's Interest</div><div class="mini-stat-val" style="color:var(--accent3)">${fmt(monthlyInt)}</div></div>
     <div class="mini-stat"><div class="mini-stat-label">~Monthly Principal</div><div class="mini-stat-val" style="color:var(--accent)">${fmt(monthlyPrin)}</div></div>
     <div class="mini-stat"><div class="mini-stat-label">Interest ÷ EMI</div><div class="mini-stat-val" style="color:var(--accent2)">${state.loan.emi ? fmtN(monthlyInt/state.loan.emi*100,1) : 0}%</div></div>
     <div class="mini-stat"><div class="mini-stat-label">Months Elapsed</div><div class="mini-stat-val">${getMonthsElapsed()}</div></div>
