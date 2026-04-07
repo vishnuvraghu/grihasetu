@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#00c896">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GrihaSetu">
+<meta name="description" content="Track your home loan the way your bank actually calculates it. EMI, prepayments, interest — all offline, all private.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>GrihaSetu — Home Loan Tracker v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --surface: #111827;
+    --surface2: #1a2438;
+    --border: #1e2d45;
+    --accent: #00c896;
+    --accent2: #f5a623;
+    --accent3: #e05c5c;
+    --accent4: #5b9ef4;
+    --text: #e8edf5;
+    --text2: #7a8da8;
+    --text3: #4a5d73;
+    --card-bg: #121e30;
+    --glow: rgba(0,200,150,0.12);
+    --debit-color: #e05c5c;
+    --credit-color: #00c896;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 10% 20%, rgba(0,200,150,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 90% 80%, rgba(245,166,35,0.05) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .container { max-width: 1300px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,15,26,0.9);
+  }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .logo { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .header-meta { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text2); text-align: right; line-height: 1.6; }
+  .drive-status { display: flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 0.7rem; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
+  .drive-status:hover { border-color: var(--accent); color: var(--accent); }
+  .drive-status.connected { border-color: rgba(0,200,150,0.4); color: var(--accent); background: rgba(0,200,150,0.07); }
+  .drive-status.syncing { border-color: rgba(245,166,35,0.4); color: var(--accent2); }
+  .drive-status.error { border-color: rgba(224,92,92,0.4); color: var(--accent3); }
+  .live-dot { display: inline-block; width: 6px; height: 6px; background: currentColor; border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; padding: 20px 0 0; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .tab {
+    font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 600;
+    padding: 10px 18px; border-radius: 8px 8px 0 0; cursor: pointer; white-space: nowrap;
+    color: var(--text2); letter-spacing: 0.3px;
+    border: 1px solid transparent; border-bottom: none; transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); background: var(--surface); }
+  .tab.active {
+    color: var(--accent); background: var(--surface);
+    border-color: var(--border); border-bottom-color: var(--surface);
+    position: relative; bottom: -1px;
+  }
+
+  /* PANELS */
+  .panel { display: none; padding: 32px 0 60px; }
+  .panel.active { display: block; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700;
+    color: var(--text2); letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* CARDS */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px; position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent)), transparent);
+  }
+  .card.orange { --card-accent: var(--accent2); }
+  .card.red { --card-accent: var(--accent3); }
+  .card.blue { --card-accent: var(--accent4); }
+  .card-label { font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .card-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+  .card-sub { font-size: 0.74rem; color: var(--text2); }
+  .card-value.green { color: var(--accent); }
+  .card-value.orange { color: var(--accent2); }
+  .card-value.red { color: var(--accent3); }
+  .card-value.blue { color: var(--accent4); }
+
+  /* PROGRESS */
+  .progress-wrap { background: var(--surface2); border-radius: 12px; padding: 22px; margin-bottom: 32px; border: 1px solid var(--border); }
+  .progress-labels { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .progress-label { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text2); }
+  .progress-bar-bg { height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), #00a37a); transition: width 0.8s ease; }
+
+  /* TABLE */
+  .table-wrap { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .table-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.92rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-family: 'DM Mono', monospace; font-size: 0.63rem; letter-spacing: 1px; color: var(--text3); text-transform: uppercase; text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  td { padding: 11px 16px; font-size: 0.83rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .td-mono { font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+  .td-debit { color: var(--debit-color); font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+  .td-credit { color: var(--credit-color); font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+
+  /* BADGES */
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 0.65rem; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .badge.emi { background: rgba(0,200,150,0.12); color: var(--accent); }
+  .badge.prepay { background: rgba(245,166,35,0.12); color: var(--accent2); }
+  .badge.interest { background: rgba(224,92,92,0.12); color: var(--accent3); }
+  .badge.debit { background: rgba(224,92,92,0.12); color: var(--accent3); }
+  .badge.credit { background: rgba(0,200,150,0.12); color: var(--accent); }
+  .badge.ratechange { background: rgba(91,158,244,0.12); color: var(--accent4); }
+  .badge.interest_cr { background: rgba(0,200,150,0.12); color: var(--accent); }
+
+  /* DR/CR indicator */
+  .dr-indicator { font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+  .dr-indicator.dr { background: rgba(224,92,92,0.15); color: var(--accent3); }
+  .dr-indicator.cr { background: rgba(0,200,150,0.15); color: var(--accent); }
+
+  /* FORMS */
+  .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  label { font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--text2); letter-spacing: 0.8px; text-transform: uppercase; }
+  input, select, textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 10px 13px;
+    font-family: 'DM Mono', monospace; font-size: 0.88rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  .btn {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem;
+    letter-spacing: 0.5px; padding: 11px 22px; border-radius: 10px;
+    border: none; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #00e0a8; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: rgba(224,92,92,0.15); color: var(--accent3); border: 1px solid rgba(224,92,92,0.3); }
+  .btn-danger:hover { background: rgba(224,92,92,0.25); }
+  .btn-drive { background: rgba(91,158,244,0.12); color: var(--accent4); border: 1px solid rgba(91,158,244,0.3); }
+  .btn-drive:hover { background: rgba(91,158,244,0.22); }
+  .form-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+
+  /* TWO COL */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 32px; }
+  @media(max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* AMORTIZATION */
+  .amo-table-wrap { max-height: 460px; overflow-y: auto; }
+  .amo-table-wrap::-webkit-scrollbar { width: 6px; }
+  .amo-table-wrap::-webkit-scrollbar-track { background: var(--surface); }
+  .amo-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  /* SCENARIO */
+  .scenario-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; }
+  .scenario-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .scenario-card.highlight { border-color: var(--accent); background: rgba(0,200,150,0.05); }
+  .scenario-name { font-family: 'Syne', sans-serif; font-weight: 700; margin-bottom: 14px; font-size: 0.88rem; }
+  .scenario-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+  .scenario-row:last-child { border-bottom: none; }
+  .scenario-row .val { font-family: 'DM Mono', monospace; color: var(--accent); }
+  .scenario-row .val.bad { color: var(--accent3); }
+
+  /* ALERT */
+  .alert { border-radius: 12px; padding: 12px 16px; font-size: 0.83rem; margin-bottom: 16px; border-left: 3px solid; }
+  .alert.info { background: rgba(91,158,244,0.08); border-color: var(--accent4); color: var(--accent4); }
+  .alert.success { background: rgba(0,200,150,0.08); border-color: var(--accent); color: var(--accent); }
+  .alert.warning { background: rgba(245,166,35,0.08); border-color: var(--accent2); color: var(--accent2); }
+
+  /* RATE HISTORY */
+  .rate-list { display: flex; flex-direction: column; gap: 8px; }
+  .rate-item { display: flex; justify-content: space-between; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 15px; }
+  .rate-item .date { font-family: 'DM Mono', monospace; font-size: 0.77rem; color: var(--text2); }
+  .rate-item .rate { font-family: 'DM Mono', monospace; font-size: 1rem; font-weight: 500; color: var(--accent); }
+  .rate-item .diff { font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; }
+  .rate-item .diff.up { background: rgba(224,92,92,0.15); color: var(--accent3); }
+  .rate-item .diff.down { background: rgba(0,200,150,0.15); color: var(--accent); }
+
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text2); font-size: 0.88rem; }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  canvas { width: 100% !important; }
+
+  .mini-stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; }
+  .mini-stat-label { font-family: 'DM Mono', monospace; font-size: 0.63rem; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .mini-stat-val { font-family: 'Syne', monospace; font-size: 1.05rem; font-weight: 700; }
+  .two-stat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* LEDGER SPECIFIC */
+  .ledger-legend { display: flex; gap: 16px; align-items: center; font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text2); margin-bottom: 12px; flex-wrap: wrap; }
+  .ledger-legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* FILTER ROW */
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn { font-family: 'DM Mono', monospace; font-size: 0.7rem; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+
+  /* DRIVE MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; max-width: 520px; width: 100%; position: relative; }
+  .modal h2 { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
+  .modal p { font-size: 0.84rem; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text2); cursor: pointer; font-size: 1.2rem; padding: 4px; }
+  .step-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+  .step-text { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
+  .step-text strong { color: var(--text); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; font-family: 'DM Mono', monospace; font-size: 0.78rem; z-index: 300; transition: all 0.3s; transform: translateY(0); opacity: 1; max-width: 320px; }
+  .toast.hidden { transform: translateY(20px); opacity: 0; pointer-events: none; }
+  .toast.success { border-color: rgba(0,200,150,0.4); color: var(--accent); }
+  .toast.error { border-color: rgba(224,92,92,0.4); color: var(--accent3); }
+
+  /* INTEREST ACCRUAL INFO */
+  .accrual-box { background: rgba(91,158,244,0.06); border: 1px solid rgba(91,158,244,0.2); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.82rem; color: var(--accent4); line-height: 1.6; }
+  .accrual-box strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container header-inner">
+    <div class="logo">Griha<span>Setu</span> <span style="font-size:0.65rem;color:var(--text3);font-weight:400;vertical-align:middle;margin-left:4px;">v4</span></div>
+    <div class="header-right">
+      <div class="drive-status" id="driveStatusBtn" onclick="openDriveModal()" title="Google Drive sync status">
+        <span class="live-dot"></span>
+        <span id="driveStatusText">Drive: Not configured</span>
+      </div>
+      <div class="header-meta">
+        Home Loan Intelligence<br>
+        <span id="currentDate"></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('dashboard',this)">Dashboard</div>
+    <div class="tab" onclick="showTab('ledger',this)">Ledger</div>
+    <div class="tab" onclick="showTab('transactions',this)">Add Entry</div>
+    <div class="tab" onclick="showTab('schedule',this)">Amortization</div>
+    <div class="tab" onclick="showTab('scenarios',this)">Scenarios</div>
+    <div class="tab" onclick="showTab('settings',this)">Loan Setup</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="panel active">
+    <div class="section-title">Overview</div>
+    <div class="cards-grid" id="dashCards"></div>
+    <div class="progress-wrap">
+      <div class="progress-labels">
+        <span class="progress-label">Loan Repaid</span>
+        <span class="progress-label" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;">
+        <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text3)">Principal Paid: <span id="prinPaid" style="color:var(--accent)">₹0</span></span>
+        <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text3)">Original: <span id="origLoan" style="color:var(--text2)">₹0</span></span>
+      </div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="section-title">Interest Split (to date)</div>
+        <div class="table-wrap" style="padding:20px;"><canvas id="pieChart" height="200"></canvas></div>
+      </div>
+      <div>
+        <div class="section-title">This Month's Breakdown</div>
+        <div id="monthlyBreakdown" class="form-card" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+      </div>
+    </div>
+    <div class="section-title">Recent Activity (Last 5)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>DR/CR</th><th>Type</th><th>Amount</th><th>Principal ↓</th><th>Interest</th><th>Outstanding</th></tr></thead>
+        <tbody id="recentTxn"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LEDGER -->
+  <div id="tab-ledger" class="panel">
+    <div class="section-title">Account Ledger</div>
+    <div class="accrual-box">
+      <strong>How interest works (your bank's actual method):</strong> When your EMI hits the loan account on the 10th, the <em>entire EMI reduces your outstanding balance</em> immediately — no interest split at this point.
+      On the last day of the month, the bank calculates interest on the daily diminishing balance (Annual Rate ÷ 365 × days × balance) and posts it as a separate DR entry.
+      This means your EMI reduces the outstanding aggressively mid-month, and the month-end interest charge is lower as a result.
+      Prepayments also directly reduce your outstanding principal, saving future interest immediately.
+    </div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="filterLedger('all',this)">All</button>
+      <button class="filter-btn" onclick="filterLedger('credit',this)">Credits (EMI / Prepay)</button>
+      <button class="filter-btn" onclick="filterLedger('debit',this)">Debits (Interest / Charges)</button>
+      <button class="filter-btn" onclick="filterLedger('emi',this)">EMI Only</button>
+      <button class="filter-btn" onclick="filterLedger('prepay',this)">Prepayments</button>
+      <button class="filter-btn" onclick="filterLedger('interest',this)">Interest Entries</button>
+    </div>
+    <div class="ledger-legend">
+      <span><span class="dot" style="background:var(--credit-color)"></span>Credit — money coming into your loan account (reduces balance)</span>
+      <span><span class="dot" style="background:var(--debit-color)"></span>Debit — charges applied to your loan account (increases cost)</span>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">Full Ledger</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" style="font-size:0.73rem;padding:7px 14px;" onclick="exportCSV()">Export CSV</button>
+          <button class="btn btn-drive" style="font-size:0.73rem;padding:7px 14px;" onclick="syncToDrive()">☁ Save to Drive</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Date</th><th>DR/CR</th><th>Type</th><th>Debit (₹)</th><th>Credit (₹)</th><th>Principal ↓</th><th>Interest</th><th>Outstanding</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="allTxn"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD ENTRY -->
+  <div id="tab-transactions" class="panel">
+    <div class="section-title">Add Transaction</div>
+    <div class="accrual-box">
+      <strong>Entry types:</strong> <strong>EMI Payment</strong> — entire EMI credits your loan account and reduces outstanding balance directly (no interest split).
+      <strong>Prepayment</strong> — directly reduces outstanding principal.
+      <strong>Interest Accrual (Month-end)</strong> — record the bank's DR posted at month-end (this increases outstanding).
+      <strong>Other Debit</strong> — charges, penalties, etc.
+    </div>
+    <div class="form-card" style="margin-bottom:28px;">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="txnDate">
+        </div>
+        <div class="form-group">
+          <label>Entry Type</label>
+          <select id="txnType" onchange="onTypeChange()">
+            <optgroup label="Credits (reduce balance)">
+              <option value="emi">EMI Payment</option>
+              <option value="prepay">Prepayment (Principal Only)</option>
+              <option value="interest_cr">Interest Payment (Credit)</option>
+            </optgroup>
+            <optgroup label="Debits (charges)">
+              <option value="interest">Interest Accrual (Month-end)</option>
+              <option value="charge">Other Debit / Charge</option>
+            </optgroup>
+            <optgroup label="Admin">
+              <option value="ratechange">Interest Rate Change</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group" id="amountGroup">
+          <label id="amountLabel">Amount (₹)</label>
+          <input type="number" id="txnAmount" placeholder="e.g. 45000">
+        </div>
+        <div class="form-group" id="daysGroup" style="display:none;">
+          <label>Days in Period</label>
+          <input type="number" id="txnDays" placeholder="e.g. 31" min="1" max="366">
+          <span style="font-size:0.7rem;color:var(--text3);margin-top:2px;">Leave blank to auto-calc from last entry date</span>
+        </div>
+        <div class="form-group">
+          <label>Notes (optional)</label>
+          <input type="text" id="txnNotes" placeholder="e.g. March EMI, Bonus prepay">
+        </div>
+        <div class="form-group" id="rateChangeGroup" style="display:none;">
+          <label>New Interest Rate (%)</label>
+          <input type="number" id="newRate" step="0.05" placeholder="e.g. 8.75">
+        </div>
+      </div>
+      <!-- EMI Split Preview -->
+      <div id="emiSplitPreview" style="display:none;margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;margin-bottom:10px;color:var(--text2);">EMI IMPACT PREVIEW</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div class="mini-stat"><div class="mini-stat-label">Interest (month-end)</div><div class="mini-stat-val" style="color:var(--accent3)" id="prev-interest">—</div></div>
+          <div class="mini-stat"><div class="mini-stat-label">Principal Reduced By</div><div class="mini-stat-val" style="color:var(--accent)" id="prev-principal">—</div></div>
+          <div class="mini-stat"><div class="mini-stat-label">New Outstanding</div><div class="mini-stat-val" id="prev-outstanding">—</div></div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addTransaction()">Add Entry</button>
+        <button class="btn btn-secondary" onclick="autoFillEMI()">Auto-fill EMI</button>
+        <button class="btn btn-secondary" onclick="calcInterestAccrual()">Calculate Interest Accrual</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AMORTIZATION -->
+  <div id="tab-schedule" class="panel">
+    <div class="section-title">Projected Amortization Schedule</div>
+    <div class="alert info">Based on current outstanding balance, rate, and EMI. Uses daily diminishing balance method.</div>
+    <div class="cards-grid" id="amo-cards" style="margin-bottom:24px;"></div>
+    <div class="table-wrap">
+      <div class="amo-table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Month</th><th>Opening Balance</th><th>EMI</th><th>Days</th><th>Interest (Daily)</th><th>Principal</th><th>Closing Balance</th></tr></thead>
+          <tbody id="amoBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENARIOS -->
+  <div id="tab-scenarios" class="panel">
+    <div class="section-title">What-If Scenario Planner</div>
+    <div class="alert warning">Compare how prepayments or rate changes affect your total interest and closure date.</div>
+    <div class="form-card" style="margin-bottom:24px;">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Monthly Extra Prepayment (₹)</label>
+          <input type="number" id="sc-extra" placeholder="e.g. 10000" value="10000">
+        </div>
+        <div class="form-group">
+          <label>One-time Lump Sum (₹)</label>
+          <input type="number" id="sc-lump" placeholder="e.g. 200000" value="0">
+        </div>
+        <div class="form-group">
+          <label>Rate Reduction (bps)</label>
+          <input type="number" id="sc-rate-cut" placeholder="e.g. 25" value="25">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="runScenarios()">Run Scenarios</button>
+      </div>
+    </div>
+    <div class="scenario-grid" id="scenarioGrid"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="tab-settings" class="panel">
+    <div class="section-title">Loan Configuration</div>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Loan Amount (₹)</label>
+          <input type="number" id="cfg-amount" placeholder="e.g. 5000000">
+        </div>
+        <div class="form-group">
+          <label>Loan Start Date</label>
+          <input type="date" id="cfg-start">
+        </div>
+        <div class="form-group">
+          <label>Tenure (months)</label>
+          <input type="number" id="cfg-tenure" placeholder="e.g. 240">
+        </div>
+        <div class="form-group">
+          <label>Current Interest Rate (%)</label>
+          <input type="number" id="cfg-rate" step="0.05" placeholder="e.g. 8.75">
+        </div>
+        <div class="form-group">
+          <label>EMI Amount (₹)</label>
+          <input type="number" id="cfg-emi" placeholder="Auto-calculated">
+        </div>
+        <div class="form-group">
+          <label>Lender Name</label>
+          <input type="text" id="cfg-lender" placeholder="e.g. SBI">
+        </div>
+        <div class="form-group">
+          <label>Account / Loan Number</label>
+          <input type="text" id="cfg-account" placeholder="Optional">
+        </div>
+        <div class="form-group">
+          <label>Loan Type</label>
+          <select id="cfg-type">
+            <option value="regular">Regular Home Loan</option>
+            <option value="maxgain">SBI MaxGain (OD)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveLoanConfig()">Save Configuration</button>
+        <button class="btn btn-secondary" onclick="calcEMI()">Calculate EMI</button>
+        <button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
+      </div>
+      <div id="cfg-msg" style="margin-top:12px;font-size:0.84rem;color:var(--accent);display:none;"></div>
+    </div>
+
+    <div style="margin-top:32px;">
+      <div class="section-title">Rate History</div>
+      <div class="form-card" style="margin-bottom:14px;">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:130px;"><label>Effective Date</label><input type="date" id="rh-date"></div>
+          <div class="form-group" style="flex:1;min-width:110px;"><label>Rate (%)</label><input type="number" id="rh-rate" step="0.05" placeholder="e.g. 9.15"></div>
+          <button class="btn btn-primary" onclick="addRateHistory()" style="height:42px;">Add</button>
+        </div>
+      </div>
+      <div class="rate-list" id="rateHistoryList"></div>
+    </div>
+
+    <div style="margin-top:32px;">
+      <div class="section-title">Google Drive Integration</div>
+      <div class="form-card">
+        <p style="font-size:0.84rem;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+          Connect to Google Drive to store your data as a JSON file in your Drive. All changes sync to Drive automatically.
+          The file is named <code style="color:var(--accent);background:var(--surface2);padding:2px 6px;border-radius:4px;">grihasetu_loan_data.json</code>.
+        </p>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Drive File ID (auto-filled after first sync)</label>
+          <input type="text" id="driveFileId" placeholder="Will be set automatically on first sync">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-drive" onclick="syncToDrive()">☁ Save to Drive</button>
+          <button class="btn btn-drive" onclick="loadFromDrive()">⬇ Load from Drive</button>
+          <button class="btn btn-secondary" onclick="openDriveModal()">Setup Guide</button>
+        </div>
+        <div id="drive-msg" style="margin-top:12px;font-size:0.82rem;display:none;"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;">
+      <div class="section-title">Data Management</div>
+      <div class="form-card">
+        <p style="font-size:0.84rem;color:var(--text2);margin-bottom:16px;">Export or import as JSON backup.</p>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="exportData()">Export JSON</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Import JSON</button>
+        </div>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVE SETUP MODAL -->
+<div class="modal-overlay hidden" id="driveModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeDriveModal()">✕</button>
+    <h2>☁ Google Drive Setup</h2>
+    <p>Your data syncs to a JSON file in your Google Drive. Uses Google OAuth — no backend, no passwords stored. One-time setup takes ~5 minutes.</p>
+    <div class="step-list">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Run <code style="color:var(--accent);background:var(--surface2);padding:1px 6px;border-radius:4px;">python3 serve.py</code> — open the app at <strong>http://localhost:8765</strong> (OAuth requires localhost, not file://)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent4);">Google Cloud Console</a> → new project → enable <strong>Google Drive API</strong> → Credentials → OAuth 2.0 Client ID (Web App) → add <code style="color:var(--accent);background:var(--surface2);padding:1px 5px;border-radius:4px;">http://localhost:8765</code> as authorised origin</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Paste your <strong>Client ID</strong> into the HTML file where it says <code style="color:var(--accent);background:var(--surface2);padding:1px 5px;border-radius:4px;">YOUR_CLIENT_ID_HERE</code></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">Click <strong>"Save to Drive"</strong> — a Google sign-in popup will appear. After signing in, your data syncs automatically on every entry.</div>
+      </div>
+    </div>
+    <div id="driveModalStatus" style="font-size:0.8rem;color:var(--text2);margin-bottom:14px;"></div>
+    <div class="form-actions">
+      <button class="btn btn-drive" onclick="syncToDrive()">☁ Save to Drive Now</button>
+      <button class="btn btn-secondary" onclick="loadFromDrive()">⬇ Load from Drive</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast hidden" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// =====================================================
+// DATA MODEL
+// =====================================================
+let state = {
+  loan: { amount:0, startDate:'', tenure:0, rate:0, emi:0, lender:'', account:'', type:'regular' },
+  transactions: [],
+  rateHistory: [],
+  driveFileId: ''
+};
+
+// Each transaction:
+// { id, date, type, drCr, amount, notes, rateAtTime, newRate? }
+// type: 'emi' | 'prepay' | 'interest' | 'charge' | 'ratechange'
+// drCr: 'CR' (credit, reduces balance) | 'DR' (debit, interest/charge)
+// For 'emi': amount = total EMI; intComp + prinComp auto-calculated
+// For 'prepay': entire amount goes to principal
+// For 'interest': DR entry, interest charged by bank at month-end
+// For 'charge': DR entry, other charges
+
+// =====================================================
+// PRE-POPULATED DATA (from bank statement Jan–Apr 2026)
+// =====================================================
+const PRELOADED_STATE = {
+  loan: {
+    amount: 0,
+    startDate: '',
+    tenure: 0,
+    rate: 0,
+    emi: 0,
+    lender: '',
+    account: '',
+    type: 'regular',
+    driveFileId: ''
+  },
+  transactions: [],
+  rateHistory: [],
+  driveFileId: ''
+};
+
+function load() {
+  const saved = localStorage.getItem('grahaSetu_v3');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.loan && parsed.loan.amount > 0) {
+        state = parsed;
+      } else {
+        state = JSON.parse(JSON.stringify(PRELOADED_STATE));
+        save();
+      }
+    } catch(e) {
+      state = JSON.parse(JSON.stringify(PRELOADED_STATE));
+      save();
+    }
+  } else {
+    state = JSON.parse(JSON.stringify(PRELOADED_STATE));
+    save();
+  }
+  if (state.loan.driveFileId) document.getElementById('driveFileId').value = state.loan.driveFileId;
+  updateDriveStatus('idle');
+
+  // Auto-load from Drive if we have a file ID and a valid session token
+  // This makes new-device access seamless: once the user authenticates and the
+  // file ID is embedded in the app, it will silently refresh from Drive on load.
+  if (state.loan.driveFileId) {
+    autoLoadFromDriveOnStartup();
+  }
+}
+
+async function autoLoadFromDriveOnStartup() {
+  // Only attempt if there's an existing session token (no prompt on new device)
+  const token = await getAccessToken();
+  if (!token) {
+    // Show a non-intrusive banner prompting the user to sync from Drive
+    showDriveBanner();
+    return;
+  }
+  // Silently pull latest data from Drive
+  try {
+    updateDriveStatus('syncing');
+    const fileId = state.loan.driveFileId;
+    const response = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) { updateDriveStatus('idle'); return; }
+    const loaded = await response.json();
+    if (loaded && loaded.loan && loaded.loan.amount > 0) {
+      state = loaded;
+      save();
+      renderSettings();
+      renderDashboard();
+      updateDriveStatus('connected');
+      toast('✓ Data refreshed from Google Drive', 'success');
+    }
+  } catch(e) {
+    updateDriveStatus('idle'); // silent fail — local data still usable
+  }
+}
+
+function showDriveBanner() {
+  // Show a banner at the top of the page prompting Drive sync
+  const existing = document.getElementById('drive-startup-banner');
+  if (existing) return;
+  const banner = document.createElement('div');
+  banner.id = 'drive-startup-banner';
+  banner.style.cssText = `
+    background: rgba(91,158,244,0.08);
+    border-bottom: 1px solid rgba(91,158,244,0.25);
+    padding: 10px 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--accent4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  `;
+  banner.innerHTML = `
+    ☁ <strong>Drive file detected.</strong> Sign in to load your latest data from Google Drive.
+    &nbsp;
+    <button onclick="loadFromDrive(); document.getElementById('drive-startup-banner').remove();"
+      style="background:rgba(91,158,244,0.15);border:1px solid rgba(91,158,244,0.4);color:var(--accent4);
+             padding:4px 14px;border-radius:99px;cursor:pointer;font-family:'DM Mono',monospace;font-size:0.72rem;">
+      Load from Drive
+    </button>
+    <button onclick="document.getElementById('drive-startup-banner').remove();"
+      style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.82rem;padding:2px 6px;">
+      ✕
+    </button>
+  `;
+  // Insert after header
+  document.querySelector('header').insertAdjacentElement('afterend', banner);
+}
+function save() {
+  localStorage.setItem('grahaSetu_v3', JSON.stringify(state));
+}
+
+// =====================================================
+// HELPERS
+// =====================================================
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function fmtN(n, dec=2) { return Number(n).toFixed(dec); }
+function monthName(d) {
+  const dt = new Date(d+'T00:00:00');
+  return dt.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+}
+function addMonths(dateStr, m) {
+  const d = new Date(dateStr+'T00:00:00');
+  d.setMonth(d.getMonth() + m);
+  return d.toISOString().split('T')[0];
+}
+function daysBetween(d1str, d2str) {
+  const d1 = new Date(d1str+'T00:00:00');
+  const d2 = new Date(d2str+'T00:00:00');
+  return Math.round((d2 - d1) / 86400000);
+}
+function daysInMonth(dateStr) {
+  const d = new Date(dateStr+'T00:00:00');
+  return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+}
+
+function calcDailyRate(annualPct) { return annualPct / 100 / 365; }
+function calcMonthlyRate(annualPct) { return annualPct / 12 / 100; }
+function calcEMIFromParams(p, r, n) {
+  if (!r) return p / n;
+  const mr = calcMonthlyRate(r);
+  return p * mr * Math.pow(1+mr,n) / (Math.pow(1+mr,n)-1);
+}
+
+// =====================================================
+// CORE: Daily Diminishing Balance Interest
+// =====================================================
+// calcInterestForPeriod: interest on a balance for N days at annual rate
+function calcInterestForDays(balance, annualRate, days) {
+  return balance * calcDailyRate(annualRate) * days;
+}
+
+// =====================================================
+// ENRICHED TRANSACTIONS
+// Build running ledger with proper DR/CR logic
+// EMI: credit → splits into interest repayment + principal repayment
+// Prepay: credit → entire amount reduces principal
+// Interest: debit → accrues on outstanding (from bank statement)
+// =====================================================
+function enrichTransactions() {
+  let bal = state.loan.amount;
+  let currentRate = state.loan.rate;
+  let lastDate = state.loan.startDate || (state.transactions[0]?.date);
+  const rows = [];
+
+  for (const t of state.transactions) {
+    if (t.type === 'ratechange') {
+      currentRate = t.newRate;
+      rows.push({ ...t, bal, rateAtTime: currentRate, prinComp: 0, intComp: 0, drCr: 'INFO' });
+      lastDate = t.date;
+      continue;
+    }
+
+    const rate = t.rateAtTime || currentRate;
+    let intComp = 0, prinComp = 0;
+
+    if (t.type === 'emi') {
+      // CR entry: ENTIRE EMI reduces outstanding principal immediately (bank's actual behaviour).
+      // Interest is NOT split here — the bank charges interest as a separate DR at month-end.
+      // So the full EMI amount is treated as principal reduction on the date of payment.
+      prinComp = Math.min(t.amount, bal);
+      intComp = 0;
+      bal = Math.max(0, bal - prinComp);
+    } else if (t.type === 'prepay') {
+      // CR entry: entire amount reduces principal directly
+      prinComp = Math.min(t.amount, bal);
+      intComp = 0;
+      bal = Math.max(0, bal - prinComp);
+    } else if (t.type === 'interest') {
+      // DR entry: interest charged by bank → increases outstanding
+      intComp = t.amount;
+      prinComp = 0;
+      bal = bal + t.amount;
+    } else if (t.type === 'charge') {
+      // DR: other charges → also increase outstanding
+      intComp = 0; prinComp = 0;
+      bal = bal + t.amount;
+    } else if (t.type === 'interest_cr') {
+      // CR entry: direct interest payment → reduces outstanding, counts as interest paid
+      intComp = t.amount;
+      prinComp = 0;
+      bal = Math.max(0, bal - t.amount);
+    }
+
+    rows.push({ ...t, bal, rateAtTime: rate, prinComp, intComp,
+      drCr: (t.type === 'emi' || t.type === 'prepay' || t.type === 'interest_cr') ? 'CR' : 'DR' });
+    lastDate = t.date;
+  }
+  return rows;
+}
+
+// =====================================================
+// DERIVED METRICS
+// =====================================================
+function getOutstanding() {
+  let bal = state.loan.amount;
+  let lastDate = state.loan.startDate;
+  let currentRate = state.loan.rate;
+  for (const t of state.transactions) {
+    if (t.type === 'ratechange') { currentRate = t.newRate; lastDate = t.date; continue; }
+    const rate = t.rateAtTime || currentRate;
+    if (t.type === 'emi') {
+      // Full EMI reduces outstanding directly — interest is a separate month-end DR
+      bal = Math.max(0, bal - t.amount);
+    } else if (t.type === 'prepay') {
+      bal = Math.max(0, bal - t.amount);
+    } else if (t.type === 'interest' || t.type === 'charge') {
+      bal = bal + t.amount;
+    } else if (t.type === 'interest_cr') {
+      bal = Math.max(0, bal - t.amount);
+    }
+    lastDate = t.date;
+  }
+  return Math.max(0, bal);
+}
+
+function getTotalInterestPaid() {
+  // Interest is now tracked only via explicit 'interest' DR entries and 'interest_cr' entries
+  // EMI entries no longer carry an intComp (full EMI = principal reduction)
+  const rich = enrichTransactions();
+  return rich.filter(t => t.type === 'interest' || t.type === 'interest_cr')
+             .reduce((s, t) => s + (t.intComp || 0), 0);
+}
+
+function getTotalPrincipalPaid() {
+  return Math.max(0, state.loan.amount - getOutstanding());
+}
+
+function getLastEntryDate() {
+  const txns = state.transactions.filter(t => t.type !== 'ratechange');
+  if (!txns.length) return state.loan.startDate || null;
+  return txns[txns.length - 1].date;
+}
+
+function getMonthsElapsed() {
+  if (!state.loan.startDate) return 0;
+  const start = new Date(state.loan.startDate+'T00:00:00');
+  const now = new Date();
+  return (now.getFullYear()-start.getFullYear())*12 + (now.getMonth()-start.getMonth());
+}
+
+function projectClosure(outstanding, rate, emi) {
+  if (!emi || !outstanding) return { months:0, totalInterest:0 };
+  const mr = calcMonthlyRate(rate);
+  let bal = outstanding, months = 0, totalInt = 0;
+  while (bal > 0.01 && months < 1200) {
+    const intPart = bal * mr;
+    const prinPart = Math.min(emi - intPart, bal);
+    totalInt += intPart; bal -= Math.max(0, prinPart); months++;
+    if (emi <= intPart) { months = 9999; break; }
+  }
+  return { months, totalInterest: totalInt };
+}
+
+function buildAmortization(startBal, rate, emi, startDate, maxMonths=360) {
+  const rows = [];
+  let bal = startBal, m = 0;
+  let curDate = startDate;
+  while (bal > 1 && m < maxMonths) {
+    const days = daysInMonth(curDate);
+    const intPart = calcInterestForDays(bal, rate, days);
+    const prinPart = Math.min(Math.max(0, emi - intPart), bal);
+    const openBal = bal;
+    bal -= prinPart;
+    rows.push({ n:m+1, date:curDate, open:openBal, emi:Math.min(emi, openBal+intPart), days, prin:prinPart, interest:intPart, close:Math.max(0,bal) });
+    m++;
+    curDate = addMonths(startDate, m);
+    if (emi <= intPart) break;
+  }
+  return rows;
+}
+
+// =====================================================
+// CURRENT MONTH INTEREST — Daily Segment Method
+// Matches bank statement: Balance × Rate × Days / 365
+// for each segment where balance was constant within the month
+// =====================================================
+function calcCurrentMonthInterest() {
+  if (!state.loan.amount || !state.loan.startDate) return 0;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1); // exclusive
+
+  // Build a timeline of (date, balance) change-points from the loan start
+  // Each entry: { date: Date, balance: number }
+  let bal = state.loan.amount;
+  let currentRate = state.loan.rate;
+  const changePoints = [{ date: new Date(state.loan.startDate + 'T00:00:00'), balance: bal }];
+
+  for (const t of state.transactions) {
+    const tDate = new Date(t.date + 'T00:00:00');
+    if (t.type === 'ratechange') { currentRate = t.newRate; continue; }
+    if (t.type === 'emi') {
+      // Full EMI reduces outstanding directly
+      bal = Math.max(0, bal - t.amount);
+    } else if (t.type === 'prepay') {
+      bal = Math.max(0, bal - t.amount);
+    } else if (t.type === 'interest' || t.type === 'charge') {
+      bal = bal + t.amount;
+    } else if (t.type === 'interest_cr') {
+      bal = Math.max(0, bal - t.amount);
+    }
+    changePoints.push({ date: tDate, balance: bal });
+  }
+  // Add end-of-month sentinel
+  changePoints.push({ date: monthEnd, balance: bal });
+
+  // Now sum interest for each segment that overlaps with this month
+  let totalInterest = 0;
+  for (let i = 0; i < changePoints.length - 1; i++) {
+    const segStart = changePoints[i].date;
+    const segEnd   = changePoints[i + 1].date;
+    const segBal   = changePoints[i].balance;
+
+    // Clip segment to [monthStart, monthEnd)
+    const clipStart = segStart < monthStart ? monthStart : segStart;
+    const clipEnd   = segEnd   > monthEnd   ? monthEnd   : segEnd;
+
+    if (clipStart >= clipEnd) continue; // no overlap
+
+    const days = Math.round((clipEnd - clipStart) / 86400000);
+    if (days <= 0) continue;
+
+    totalInterest += calcInterestForDays(segBal, currentRate, days);
+  }
+
+  return totalInterest;
+}
+
+// =====================================================
+// INTEREST ACCRUED FROM MONTH START UP TO TODAY (exclusive)
+// Uses the same daily-segment logic, but clips to [monthStart, today)
+// =====================================================
+function calcInterestAccruedTillToday() {
+  if (!state.loan.amount || !state.loan.startDate) return 0;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // start of today, exclusive upper bound
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Build balance change-points (same as calcCurrentMonthInterest)
+  let bal = state.loan.amount;
+  let currentRate = state.loan.rate;
+  const changePoints = [{ date: new Date(state.loan.startDate + 'T00:00:00'), balance: bal }];
+
+  for (const t of state.transactions) {
+    const tDate = new Date(t.date + 'T00:00:00');
+    if (t.type === 'ratechange') { currentRate = t.newRate; continue; }
+    if (t.type === 'emi') {
+      bal = Math.max(0, bal - t.amount);
+    } else if (t.type === 'prepay') {
+      bal = Math.max(0, bal - t.amount);
+    } else if (t.type === 'interest' || t.type === 'charge') {
+      bal = bal + t.amount;
+    } else if (t.type === 'interest_cr') {
+      bal = Math.max(0, bal - t.amount);
+    }
+    changePoints.push({ date: tDate, balance: bal });
+  }
+  changePoints.push({ date: today, balance: bal }); // sentinel = today
+
+  let totalInterest = 0;
+  for (let i = 0; i < changePoints.length - 1; i++) {
+    const segStart = changePoints[i].date;
+    const segEnd   = changePoints[i + 1].date;
+    const segBal   = changePoints[i].balance;
+
+    const clipStart = segStart < monthStart ? monthStart : segStart;
+    const clipEnd   = segEnd   > today      ? today      : segEnd;
+    if (clipStart >= clipEnd) continue;
+
+    const days = Math.round((clipEnd - clipStart) / 86400000);
+    if (days <= 0) continue;
+    totalInterest += calcInterestForDays(segBal, currentRate, days);
+  }
+
+  return totalInterest;
+}
+// =====================================================
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type;
+  setTimeout(() => { el.className = 'toast hidden'; }, 3500);
+}
+
+function showTab(tab, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (el) el.classList.add('active');
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'ledger') renderLedger('all');
+  if (tab === 'transactions') renderAddEntry();
+  if (tab === 'schedule') renderAmortization();
+  if (tab === 'scenarios') runScenarios();
+  if (tab === 'settings') renderSettings();
+}
+
+let currentFilter = 'all';
+function filterLedger(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderLedger(f);
+}
+
+// =====================================================
+// DASHBOARD
+// =====================================================
+let pieChartInst = null;
+function renderDashboard() {
+  if (!state.loan.amount) {
+    document.getElementById('dashCards').innerHTML = '<div class="empty-state"><div class="icon">🏠</div>No loan configured. Go to <b>Loan Setup</b> to get started.</div>';
+    return;
+  }
+  const outstanding = getOutstanding();
+  const totalIntPaid = getTotalInterestPaid();
+  const prinPaid = getTotalPrincipalPaid();
+  const closure = projectClosure(outstanding, state.loan.rate, state.loan.emi);
+  const pct = Math.min(100, (prinPaid / state.loan.amount) * 100);
+  const closureDate = new Date();
+  closureDate.setMonth(closureDate.getMonth() + closure.months);
+  const totalPrepay = state.transactions.filter(t=>t.type==='prepay').reduce((s,t)=>s+t.amount,0);
+
+  const cards = [
+    { label:'Outstanding Principal', val:fmt(outstanding), cls:'red', valCls:'red', sub:`of ${fmt(state.loan.amount)} original` },
+    { label:'Total Interest Paid', val:fmt(totalIntPaid), cls:'orange', valCls:'orange', sub:`${state.transactions.filter(t=>t.type==='emi').length} EMIs processed` },
+    { label:'Principal Repaid', val:fmt(prinPaid), cls:'', valCls:'green', sub:`${fmtN(pct,1)}% of loan cleared` },
+    { label:'Prepayments Made', val:fmt(totalPrepay), cls:'blue', valCls:'blue', sub:`direct principal reduction` },
+    { label:'Current Rate', val:fmtN(state.loan.rate,2)+'%', cls:'blue', valCls:'blue', sub:state.loan.lender||'Floating Rate' },
+    { label:'Projected Closure', val:closure.months<9999 ? closureDate.toLocaleDateString('en-IN',{month:'short',year:'numeric'}) : 'EMI too low!', cls:'', valCls:closure.months<9999?'green':'red', sub:closure.months<9999?`~${closure.months} months remaining`:'Increase EMI' },
+  ];
+
+  document.getElementById('dashCards').innerHTML = cards.map(c => `
+    <div class="card ${c.cls}">
+      <div class="card-label">${c.label}</div>
+      <div class="card-value ${c.valCls}">${c.val}</div>
+      <div class="card-sub">${c.sub}</div>
+    </div>`).join('');
+
+  document.getElementById('progressPct').textContent = fmtN(pct,1)+'%';
+  document.getElementById('progressBar').style.width = pct+'%';
+  document.getElementById('prinPaid').textContent = fmt(prinPaid);
+  document.getElementById('origLoan').textContent = fmt(state.loan.amount);
+
+  // Pie
+  const projInt = closure.totalInterest;
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  if (pieChartInst) pieChartInst.destroy();
+  pieChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Principal Paid','Interest Paid','Principal Remaining','Future Interest'],
+      datasets: [{ data:[prinPaid, totalIntPaid, outstanding, projInt],
+        backgroundColor:['#00c896','#e05c5c','#1a2438','#f5a623'],
+        borderColor:'#0a0f1a', borderWidth:3 }]
+    },
+    options: { responsive:true, plugins:{ legend:{ labels:{ color:'#7a8da8', font:{family:'DM Mono',size:11} } } } }
+  });
+
+  // Monthly breakdown — actual daily-balance method (matches bank statement)
+  const now = new Date();
+  const monthlyInt = calcCurrentMonthInterest();
+  // Interest accrued from month start up to (but not including) today
+  const accruedTillToday = calcInterestAccruedTillToday();
+  const monthlyPrin = state.transactions
+    .filter(t => {
+      const d = new Date(t.date + 'T00:00:00');
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+        && (t.type === 'emi' || t.type === 'prepay');
+    })
+    .reduce((s, t) => s + t.amount, 0);
+
+  document.getElementById('monthlyBreakdown').innerHTML = `
+    <div class="mini-stat"><div class="mini-stat-label">Full Month Interest*</div><div class="mini-stat-val" style="color:var(--accent3)">${fmt(monthlyInt)}</div></div>
+    <div class="mini-stat"><div class="mini-stat-label">Accrued Till Today</div><div class="mini-stat-val" style="color:var(--accent2)">${fmt(accruedTillToday)}</div></div>
+    <div class="mini-stat"><div class="mini-stat-label">Credits This Month</div><div class="mini-stat-val" style="color:var(--accent)">${fmt(monthlyPrin)}</div></div>
+    <div class="mini-stat"><div class="mini-stat-label">Interest ÷ EMI</div><div class="mini-stat-val" style="color:var(--accent2)">${state.loan.emi ? fmtN(monthlyInt/state.loan.emi*100,1) : 0}%</div></div>
+    <div class="mini-stat"><div class="mini-stat-label">Future Interest</div><div class="mini-stat-val" style="color:var(--accent3)">${fmt(projInt)}</div></div>
+    <div class="mini-stat"><div class="mini-stat-label">Total Loan Cost</div><div class="mini-stat-val">${fmt(totalIntPaid + projInt + state.loan.amount)}</div></div>
+    <div style="grid-column:1/-1;font-size:0.68rem;color:var(--text3);margin-top:4px;">* Full Month Interest = projected interest for the entire current calendar month at current balances</div>
+  `;
+
+  const rich = enrichTransactions().slice(-5).reverse();
+  document.getElementById('recentTxn').innerHTML = rich.length ?
+    rich.map(t => txnRowCompact(t)).join('') :
+    '<tr><td colspan="7" class="empty-state">No transactions yet.</td></tr>';
+}
+
+function txnRowCompact(t) {
+  if (t.type === 'ratechange') return `<tr>
+    <td class="td-mono">${t.date}</td>
+    <td><span class="dr-indicator" style="background:rgba(91,158,244,0.15);color:var(--accent4)">INFO</span></td>
+    <td><span class="badge ratechange">Rate Change</span></td>
+    <td colspan="3" class="td-mono" style="color:var(--accent4)">→ ${t.newRate}% p.a.</td>
+    <td class="td-mono">${fmt(t.bal)}</td>
+  </tr>`;
+  const drCr = (t.type==='emi'||t.type==='prepay'||t.type==='interest_cr') ? 'CR' : 'DR';
+  const drCrCls = drCr==='CR' ? 'cr' : 'dr';
+  return `<tr>
+    <td class="td-mono">${t.date}</td>
+    <td><span class="dr-indicator ${drCrCls}">${drCr}</span></td>
+    <td><span class="badge ${t.type==='emi'?'emi':t.type==='prepay'?'prepay':t.type==='interest'?'interest':t.type==='interest_cr'?'interest_cr':'debit'}">${t.type==='emi'?'EMI':t.type==='prepay'?'Prepay':t.type==='interest'?'Interest':t.type==='interest_cr'?'Int.Payment':'Charge'}</span></td>
+    <td class="td-mono" style="color:var(--text)">${fmt(t.amount)}</td>
+    <td class="td-credit">${t.prinComp>0 ? fmt(t.prinComp) : '—'}</td>
+    <td class="td-debit">${t.intComp>0 ? fmt(t.intComp) : '—'}</td>
+    <td class="td-mono">${fmt(t.bal)}</td>
+  </tr>`;
+}
+
+// =====================================================
+// LEDGER
+// =====================================================
+function renderLedger(filter) {
+  let rich = enrichTransactions().reverse();
+  if (filter === 'credit') rich = rich.filter(t => t.type==='emi'||t.type==='prepay');
+  else if (filter === 'debit') rich = rich.filter(t => t.type==='interest'||t.type==='charge');
+  else if (filter === 'emi') rich = rich.filter(t => t.type==='emi');
+  else if (filter === 'prepay') rich = rich.filter(t => t.type==='prepay');
+  else if (filter === 'interest') rich = rich.filter(t => t.type==='interest');
+
+  document.getElementById('allTxn').innerHTML = rich.length ?
+    rich.map(t => txnRowFull(t, true)).join('') :
+    '<tr><td colspan="10" class="empty-state">No entries found.</td></tr>';
+}
+
+function txnRowFull(t, showDel=true) {
+  const delBtn = showDel ? `<td><button class="btn btn-danger" style="padding:3px 8px;font-size:0.68rem;" onclick="deleteTxn('${t.id}')">Del</button></td>` : '<td></td>';
+  if (t.type === 'ratechange') return `<tr>
+    <td class="td-mono">${t.date}</td>
+    <td><span class="dr-indicator" style="background:rgba(91,158,244,0.15);color:var(--accent4)">INFO</span></td>
+    <td><span class="badge ratechange">Rate Change</span></td>
+    <td colspan="2" class="td-mono" style="color:var(--accent4)">→ ${t.newRate}% p.a.</td>
+    <td>—</td><td>—</td>
+    <td class="td-mono">${fmt(t.bal)}</td>
+    <td style="color:var(--text2);font-size:0.77rem;">${t.notes||''}</td>
+    ${delBtn}
+  </tr>`;
+
+  const isCR = t.type==='emi'||t.type==='prepay'||t.type==='interest_cr';
+  const drCr = isCR ? 'CR' : 'DR';
+  const drCrCls = isCR ? 'cr' : 'dr';
+  const typeLabel = {emi:'EMI',prepay:'Prepay',interest:'Interest',interest_cr:'Int.Payment',charge:'Charge'}[t.type]||t.type;
+
+  return `<tr>
+    <td class="td-mono">${t.date}</td>
+    <td><span class="dr-indicator ${drCrCls}">${drCr}</span></td>
+    <td><span class="badge ${t.type==='emi'?'emi':t.type==='prepay'?'prepay':t.type==='interest'?'interest':t.type==='interest_cr'?'interest_cr':'debit'}">${typeLabel}</span></td>
+    <td class="td-debit">${!isCR ? fmt(t.amount) : '—'}</td>
+    <td class="td-credit">${isCR ? fmt(t.amount) : '—'}</td>
+    <td class="td-credit">${t.prinComp>0 ? fmt(t.prinComp) : '—'}</td>
+    <td class="td-debit">${t.intComp>0 ? fmt(t.intComp) : '—'}</td>
+    <td class="td-mono">${fmt(t.bal)}</td>
+    <td style="color:var(--text2);font-size:0.77rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">${t.notes||''}</td>
+    ${delBtn}
+  </tr>`;
+}
+
+// =====================================================
+// ADD ENTRY
+// =====================================================
+function renderAddEntry() {
+  // Update preview if EMI type is selected
+  onTypeChange();
+}
+
+function onTypeChange() {
+  const type = document.getElementById('txnType').value;
+  document.getElementById('rateChangeGroup').style.display = type==='ratechange' ? 'block' : 'none';
+  document.getElementById('daysGroup').style.display = type==='interest' ? 'flex' : 'none';
+  document.getElementById('emiSplitPreview').style.display = type==='emi' ? 'block' : 'none';
+
+  const labels = { emi:'EMI Amount (₹)', prepay:'Prepayment Amount (₹)', interest:'Interest Amount (₹)', interest_cr:'Interest Payment Amount (₹)', charge:'Charge Amount (₹)', ratechange:'(N/A)' };
+  document.getElementById('amountLabel').textContent = labels[type] || 'Amount (₹)';
+
+  if (type==='emi') updateEMISplitPreview();
+}
+
+function updateEMISplitPreview() {
+  const amount = parseFloat(document.getElementById('txnAmount').value);
+  if (!amount) { return; }
+  const outstanding = getOutstanding();
+  const newOutstanding = Math.max(0, outstanding - amount);
+  document.getElementById('prev-interest').textContent = '—';
+  document.getElementById('prev-principal').textContent = fmt(Math.min(amount, outstanding));
+  document.getElementById('prev-outstanding').textContent = fmt(newOutstanding);
+  // Update label
+  const previewBox = document.getElementById('emiSplitPreview');
+  const intLabel = previewBox.querySelector('.mini-stat-label');
+  if (intLabel) intLabel.textContent = 'Interest Portion';
+  // Add note about bank behaviour
+  let note = document.getElementById('emi-behaviour-note');
+  if (!note) {
+    note = document.createElement('div');
+    note.id = 'emi-behaviour-note';
+    note.style.cssText = 'font-size:0.74rem;color:var(--accent4);margin-top:10px;line-height:1.5;';
+    previewBox.appendChild(note);
+  }
+  note.textContent = '↳ Entire EMI reduces your outstanding balance on payment date. Bank will add interest as a separate DR at month-end.';
+}
+
+// Attach live preview update
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('txnAmount').addEventListener('input', () => {
+    if (document.getElementById('txnType').value === 'emi') updateEMISplitPreview();
+  });
+  document.getElementById('txnDate').addEventListener('change', () => {
+    if (document.getElementById('txnType').value === 'emi') updateEMISplitPreview();
+  });
+});
+
+function calcInterestAccrual() {
+  // Auto-calculate interest for the period from last entry to today
+  const outstanding = getOutstanding();
+  const lastDate = getLastEntryDate();
+  const today = new Date().toISOString().split('T')[0];
+  const days = lastDate ? Math.max(1, daysBetween(lastDate, today)) : 30;
+  const interest = calcInterestForDays(outstanding, state.loan.rate, days);
+  document.getElementById('txnType').value = 'interest';
+  document.getElementById('txnDate').value = today;
+  document.getElementById('txnAmount').value = Math.round(interest);
+  document.getElementById('txnDays').value = days;
+  document.getElementById('txnNotes').value = `Interest accrual for ${days} days @ ${state.loan.rate}%`;
+  onTypeChange();
+  toast(`Interest for ${days} days: ${fmt(interest)}`, 'success');
+}
+
+function autoFillEMI() {
+  document.getElementById('txnAmount').value = Math.round(state.loan.emi);
+  document.getElementById('txnType').value = 'emi';
+  document.getElementById('txnDate').value = new Date().toISOString().split('T')[0];
+  onTypeChange();
+  updateEMISplitPreview();
+}
+
+function addTransaction() {
+  const date = document.getElementById('txnDate').value;
+  const type = document.getElementById('txnType').value;
+  const amount = parseFloat(document.getElementById('txnAmount').value);
+  const notes = document.getElementById('txnNotes').value;
+  const newRate = parseFloat(document.getElementById('newRate').value);
+
+  if (!date) return alert('Please enter a date.');
+  if (type !== 'ratechange' && (!amount || isNaN(amount))) return alert('Please enter a valid amount.');
+  if (type === 'ratechange' && (!newRate || isNaN(newRate))) return alert('Please enter the new rate.');
+
+  const txn = {
+    id: Date.now().toString(),
+    date, type,
+    amount: amount || 0,
+    notes,
+    rateAtTime: state.loan.rate,
+    newRate: type === 'ratechange' ? newRate : undefined
+  };
+
+  if (type === 'ratechange') {
+    state.loan.rate = newRate;
+  }
+
+  state.transactions.push(txn);
+  state.transactions.sort((a,b) => a.date.localeCompare(b.date));
+  save();
+
+  document.getElementById('txnAmount').value = '';
+  document.getElementById('txnNotes').value = '';
+  document.getElementById('txnDays').value = '';
+  updateEMISplitPreview && onTypeChange();
+
+  // Auto-sync to Drive if configured
+  if (state.loan.driveFileId || document.getElementById('driveFileId').value) {
+    syncToDriveAuto();
+  }
+
+  toast('Entry added successfully!', 'success');
+}
+
+function deleteTxn(id) {
+  if (!confirm('Delete this entry?')) return;
+  state.transactions = state.transactions.filter(t => t.id !== id);
+  save();
+  renderLedger(currentFilter);
+  toast('Entry deleted.', 'success');
+}
+
+// =====================================================
+// AMORTIZATION
+// =====================================================
+function renderAmortization() {
+  const outstanding = getOutstanding();
+  const rate = state.loan.rate;
+  const emi = state.loan.emi;
+  if (!outstanding || !emi) {
+    document.getElementById('amoBody').innerHTML = '<tr><td colspan="8" class="empty-state">Configure your loan first.</td></tr>';
+    return;
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const rows = buildAmortization(outstanding, rate, emi, today);
+  const totalInt = rows.reduce((s,r) => s+r.interest, 0);
+  const totalPrin = rows.reduce((s,r) => s+r.prin, 0);
+
+  document.getElementById('amo-cards').innerHTML = `
+    <div class="card"><div class="card-label">Months to Close</div><div class="card-value green">${rows.length}</div><div class="card-sub">~${(rows.length/12).toFixed(1)} years</div></div>
+    <div class="card red"><div class="card-label">Future Interest</div><div class="card-value red">${fmt(totalInt)}</div><div class="card-sub">total interest outgo</div></div>
+    <div class="card"><div class="card-label">Total Payments</div><div class="card-value">${fmt(totalInt+totalPrin)}</div><div class="card-sub">principal + interest</div></div>
+  `;
+
+  document.getElementById('amoBody').innerHTML = rows.map(r => `
+    <tr>
+      <td class="td-mono" style="color:var(--text3)">${r.n}</td>
+      <td class="td-mono">${monthName(r.date)}</td>
+      <td class="td-mono">${fmt(r.open)}</td>
+      <td class="td-mono">${fmt(r.emi)}</td>
+      <td class="td-mono" style="color:var(--text2)">${r.days}</td>
+      <td class="td-mono" style="color:var(--accent3)">${fmt(r.interest)}</td>
+      <td class="td-mono" style="color:var(--accent)">${fmt(r.prin)}</td>
+      <td class="td-mono">${fmt(r.close)}</td>
+    </tr>`).join('');
+}
+
+// =====================================================
+// SCENARIOS
+// =====================================================
+function runScenarios() {
+  const outstanding = getOutstanding();
+  const rate = state.loan.rate;
+  const emi = state.loan.emi;
+  const extra = parseFloat(document.getElementById('sc-extra')?.value) || 0;
+  const lump = parseFloat(document.getElementById('sc-lump')?.value) || 0;
+  const rateCut = parseFloat(document.getElementById('sc-rate-cut')?.value) || 0;
+
+  if (!outstanding || !emi) {
+    document.getElementById('scenarioGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">Configure your loan to run scenarios.</div>';
+    return;
+  }
+
+  function simulate(bal, r, monthlyEmi, lumpSum=0) {
+    const mr = calcMonthlyRate(r);
+    let b = Math.max(0, bal - lumpSum);
+    let months = 0, totalInt = 0;
+    while (b > 0.01 && months < 1200) {
+      const ip = b * mr;
+      const pp = Math.min(monthlyEmi - ip, b);
+      totalInt += ip; b -= Math.max(0,pp); months++;
+      if (monthlyEmi <= ip) { months = 9999; break; }
+    }
+    const closeDt = new Date();
+    closeDt.setMonth(closeDt.getMonth() + months);
+    return { months, totalInt, closeDate: closeDt.toLocaleDateString('en-IN',{month:'short',year:'numeric'}) };
+  }
+
+  const base = simulate(outstanding, rate, emi);
+  const sc1 = simulate(outstanding, rate, emi+extra);
+  const sc2 = simulate(outstanding, rate, emi, lump);
+  const sc3 = simulate(outstanding, rate-rateCut/100, emi);
+
+  function intSaving(sc) {
+    const s = base.totalInt - sc.totalInt;
+    return s > 0 ? `<span style="color:var(--accent)">${fmt(s)} saved</span>` : `<span style="color:var(--accent3)">No saving</span>`;
+  }
+  function monthSaving(sc) {
+    const s = base.months - sc.months;
+    return s > 0 ? `<span class="badge" style="background:rgba(0,200,150,0.12);color:var(--accent)">${s} months saved</span>` : '';
+  }
+  function scCard(title, sc, hl=false) {
+    return `<div class="scenario-card ${hl?'highlight':''}">
+      <div class="scenario-name">${title}</div>
+      <div class="scenario-row"><span>Closure</span><span class="val">${sc.months<9999?sc.closeDate:'EMI too low!'}</span></div>
+      <div class="scenario-row"><span>Months</span><span class="val">${sc.months<9999?sc.months:'∞'}</span></div>
+      <div class="scenario-row"><span>Future Interest</span><span class="val bad">${fmt(sc.totalInt)}</span></div>
+      <div class="scenario-row"><span>Saving vs Base</span><span>${intSaving(sc)}</span></div>
+      <div style="margin-top:8px;">${monthSaving(sc)}</div>
+    </div>`;
+  }
+
+  document.getElementById('scenarioGrid').innerHTML =
+    scCard('📍 Base (No Change)', base) +
+    scCard(`💰 +${fmt(extra)}/mo Prepay`, sc1, true) +
+    scCard(`🎯 ${fmt(lump)} Lump Sum`, sc2) +
+    scCard(`📉 −${rateCut} bps Rate Cut`, sc3);
+}
+
+// =====================================================
+// SETTINGS
+// =====================================================
+function calcEMI() {
+  const p = parseFloat(document.getElementById('cfg-amount').value);
+  const r = parseFloat(document.getElementById('cfg-rate').value);
+  const n = parseFloat(document.getElementById('cfg-tenure').value);
+  if (!p||!r||!n) return alert('Fill amount, rate, and tenure first.');
+  document.getElementById('cfg-emi').value = Math.round(calcEMIFromParams(p,r,n));
+}
+
+function saveLoanConfig() {
+  state.loan.amount = parseFloat(document.getElementById('cfg-amount').value)||0;
+  state.loan.startDate = document.getElementById('cfg-start').value;
+  state.loan.tenure = parseInt(document.getElementById('cfg-tenure').value)||0;
+  state.loan.rate = parseFloat(document.getElementById('cfg-rate').value)||0;
+  state.loan.emi = parseFloat(document.getElementById('cfg-emi').value)||0;
+  state.loan.lender = document.getElementById('cfg-lender').value;
+  state.loan.account = document.getElementById('cfg-account').value;
+  state.loan.type = document.getElementById('cfg-type').value;
+  state.loan.driveFileId = document.getElementById('driveFileId').value.trim();
+  save();
+  const msg = document.getElementById('cfg-msg');
+  msg.textContent = '✓ Configuration saved!'; msg.style.display = 'block';
+  setTimeout(()=>{ msg.style.display='none'; }, 3000);
+}
+
+function renderSettings() {
+  document.getElementById('cfg-amount').value = state.loan.amount||'';
+  document.getElementById('cfg-start').value = state.loan.startDate||'';
+  document.getElementById('cfg-tenure').value = state.loan.tenure||'';
+  document.getElementById('cfg-rate').value = state.loan.rate||'';
+  document.getElementById('cfg-emi').value = state.loan.emi||'';
+  document.getElementById('cfg-lender').value = state.loan.lender||'';
+  document.getElementById('cfg-account').value = state.loan.account||'';
+  document.getElementById('cfg-type').value = state.loan.type||'regular';
+  document.getElementById('driveFileId').value = state.loan.driveFileId||'';
+  renderRateHistory();
+}
+
+function addRateHistory() {
+  const d = document.getElementById('rh-date').value;
+  const r = parseFloat(document.getElementById('rh-rate').value);
+  if (!d||!r) return alert('Enter date and rate.');
+  state.rateHistory.push({date:d,rate:r});
+  state.rateHistory.sort((a,b) => a.date.localeCompare(b.date));
+  save(); renderRateHistory();
+}
+
+function renderRateHistory() {
+  const list = document.getElementById('rateHistoryList');
+  if (!state.rateHistory.length) { list.innerHTML = '<div class="empty-state" style="padding:20px">No rate history added yet.</div>'; return; }
+  list.innerHTML = state.rateHistory.map((r,i) => {
+    const prev = state.rateHistory[i-1];
+    const diff = prev ? (r.rate - prev.rate) : 0;
+    const diffHtml = diff !== 0 ? `<span class="diff ${diff>0?'up':'down'}">${diff>0?'▲':'▼'} ${Math.abs(diff*100).toFixed(0)} bps</span>` : '';
+    return `<div class="rate-item">
+      <span class="date">${r.date}</span>
+      <span class="rate">${r.rate}% p.a.</span>
+      ${diffHtml}
+      <button class="btn btn-danger" style="padding:3px 9px;font-size:0.68rem;" onclick="deleteRate(${i})">×</button>
+    </div>`;
+  }).reverse().join('');
+}
+
+function deleteRate(i) { state.rateHistory.splice(i,1); save(); renderRateHistory(); }
+
+function resetAll() {
+  if (!confirm('Delete ALL data? This cannot be undone.')) return;
+  state = { loan:{amount:0,startDate:'',tenure:0,rate:0,emi:0,lender:'',account:'',type:'regular',driveFileId:''}, transactions:[], rateHistory:[] };
+  save(); location.reload();
+}
+
+function exportData() {
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state,null,2));
+  a.download = 'grihasetu_backup.json'; a.click();
+}
+
+function importData(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try { state = JSON.parse(e.target.result); save(); renderSettings(); toast('Data imported!','success'); }
+    catch { alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+}
+
+function exportCSV() {
+  const rich = enrichTransactions();
+  let csv = 'Date,DR/CR,Type,Debit,Credit,Principal,Interest,Outstanding,Notes\n';
+  rich.forEach(t => {
+    const isCR = t.type==='emi'||t.type==='prepay'||t.type==='interest_cr';
+    const dr = !isCR ? t.amount : '';
+    const cr = isCR ? t.amount : '';
+    csv += `${t.date},${isCR?'CR':'DR'},${t.type},${dr},${cr},${Math.round(t.prinComp||0)},${Math.round(t.intComp||0)},${Math.round(t.bal)},${t.notes||''}\n`;
+  });
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'loan_ledger.csv'; a.click();
+}
+
+// =====================================================
+// GOOGLE DRIVE INTEGRATION
+// Real OAuth via Google Identity Services (GIS)
+// Works from localhost — run serve.py to launch
+// =====================================================
+const DRIVE_FILE_NAME = 'grihasetu_loan_data.json';
+const DRIVE_API = 'https://www.googleapis.com/drive/v3';
+const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
+
+// ─── PASTE YOUR CLIENT ID HERE ───────────────────────
+const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+// ─────────────────────────────────────────────────────
+
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+let driveAccessToken = null;
+let tokenClient = null;
+let gisReady = false;
+
+// Load GIS script dynamically
+(function loadGIS() {
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true; s.defer = true;
+  s.onload = () => {
+    gisReady = true;
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      callback: (resp) => {
+        if (resp.error) {
+          updateDriveStatus('error');
+          toast('Google sign-in failed: ' + resp.error, 'error');
+          return;
+        }
+        driveAccessToken = resp.access_token;
+        // Store token with expiry (default 3600s)
+        sessionStorage.setItem('grihasetu_gtoken', JSON.stringify({
+          token: resp.access_token,
+          expiry: Date.now() + (resp.expires_in || 3600) * 1000
+        }));
+        // Continue with pending operation
+        if (pendingDriveOp) { pendingDriveOp(); pendingDriveOp = null; }
+      }
+    });
+  };
+  document.head.appendChild(s);
+})();
+
+let pendingDriveOp = null;
+
+function updateDriveStatus(status) {
+  const btn = document.getElementById('driveStatusBtn');
+  const text = document.getElementById('driveStatusText');
+  if (status === 'connected') {
+    btn.className = 'drive-status connected';
+    text.textContent = '☁ Drive: Synced';
+  } else if (status === 'syncing') {
+    btn.className = 'drive-status syncing';
+    text.textContent = '☁ Drive: Syncing…';
+  } else if (status === 'error') {
+    btn.className = 'drive-status error';
+    text.textContent = '☁ Drive: Error';
+  } else if (status === 'auth') {
+    btn.className = 'drive-status syncing';
+    text.textContent = '☁ Drive: Signing in…';
+  } else {
+    btn.className = 'drive-status';
+    const fileId = state.loan.driveFileId || document.getElementById('driveFileId')?.value;
+    text.textContent = fileId ? '☁ Drive: Configured' : '☁ Drive: Not set up';
+  }
+}
+
+async function getAccessToken() {
+  // 1. Already have a valid in-memory token
+  if (driveAccessToken) return driveAccessToken;
+  // 2. Check sessionStorage for a still-valid token
+  try {
+    const stored = sessionStorage.getItem('grihasetu_gtoken');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.expiry > Date.now() + 60000) { // 60s buffer
+        driveAccessToken = parsed.token;
+        return driveAccessToken;
+      }
+    }
+  } catch(e) {}
+  return null; // Need to request a new token
+}
+
+async function ensureToken(onTokenReady) {
+  const token = await getAccessToken();
+  if (token) { onTokenReady(); return; }
+
+  if (!gisReady || !tokenClient) {
+    if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com') {
+      showClientIdHelp();
+      return;
+    }
+    toast('Google auth not ready yet, please try again.', 'error');
+    return;
+  }
+  if (GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com') {
+    showClientIdHelp();
+    return;
+  }
+  pendingDriveOp = onTokenReady;
+  updateDriveStatus('auth');
+  tokenClient.requestAccessToken({ prompt: '' }); // silent if already consented, popup if not
+}
+
+async function syncToDrive() {
+  updateDriveStatus('syncing');
+  const driveMsg = document.getElementById('drive-msg');
+  const modalStatus = document.getElementById('driveModalStatus');
+  if (driveMsg) { driveMsg.style.display = 'block'; driveMsg.style.color = 'var(--accent2)'; driveMsg.textContent = '⟳ Syncing to Drive…'; }
+  if (modalStatus) modalStatus.textContent = '⟳ Signing in & syncing…';
+
+  ensureToken(async () => {
+    try {
+      const token = driveAccessToken;
+      const fileId = state.loan.driveFileId || document.getElementById('driveFileId').value.trim();
+      const content = JSON.stringify(state, null, 2);
+      let response;
+
+      if (fileId) {
+        response = await fetch(`${DRIVE_UPLOAD}/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: content
+        });
+      } else {
+        const metadata = JSON.stringify({ name: DRIVE_FILE_NAME, mimeType: 'application/json' });
+        const boundary = 'grihasetu_' + Date.now();
+        const body = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
+        response = await fetch(`${DRIVE_UPLOAD}/files?uploadType=multipart`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+          body
+        });
+      }
+
+      if (!response.ok) {
+        const err = await response.json();
+        // Token may be stale — clear it and retry once
+        if (response.status === 401) {
+          driveAccessToken = null;
+          sessionStorage.removeItem('grihasetu_gtoken');
+          throw new Error('Session expired. Please click Save to Drive again.');
+        }
+        throw new Error(err.error?.message || 'Drive API error');
+      }
+
+      const data = await response.json();
+      if (data.id && !state.loan.driveFileId) {
+        state.loan.driveFileId = data.id;
+        document.getElementById('driveFileId').value = data.id;
+        save();
+      }
+      updateDriveStatus('connected');
+      if (driveMsg) { driveMsg.style.color = 'var(--accent)'; driveMsg.textContent = '✓ Synced to Google Drive!'; }
+      if (modalStatus) modalStatus.textContent = '✓ Saved to Drive successfully!';
+      toast('Synced to Google Drive ☁', 'success');
+    } catch (err) {
+      updateDriveStatus('error');
+      const errMsg = err.message || 'Unknown error';
+      if (driveMsg) { driveMsg.style.color = 'var(--accent3)'; driveMsg.textContent = '✗ ' + errMsg; }
+      if (modalStatus) modalStatus.textContent = '✗ ' + errMsg;
+      toast('Drive sync failed: ' + errMsg, 'error');
+    }
+  });
+}
+
+async function syncToDriveAuto() {
+  const token = await getAccessToken();
+  if (!token) return; // silent — user hasn't signed in yet
+  const fileId = state.loan.driveFileId || document.getElementById('driveFileId').value.trim();
+  if (!fileId) return;
+  try {
+    await fetch(`${DRIVE_UPLOAD}/files/${fileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(state, null, 2)
+    });
+    updateDriveStatus('connected');
+  } catch(e) { /* silent */ }
+}
+
+async function loadFromDrive() {
+  const fileId = state.loan.driveFileId || document.getElementById('driveFileId').value.trim();
+  if (!fileId) { alert('No Drive File ID found. Save to Drive first, or paste a File ID in Loan Setup.'); return; }
+
+  updateDriveStatus('syncing');
+  const driveMsg = document.getElementById('drive-msg');
+  if (driveMsg) { driveMsg.style.display = 'block'; driveMsg.style.color = 'var(--accent2)'; driveMsg.textContent = '⟳ Loading from Drive…'; }
+
+  ensureToken(async () => {
+    try {
+      const token = driveAccessToken;
+      const response = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Could not read file from Drive. Check the File ID.');
+      const loaded = await response.json();
+      state = loaded;
+      save();
+      renderSettings();
+      renderDashboard();
+      updateDriveStatus('connected');
+      if (driveMsg) { driveMsg.style.color = 'var(--accent)'; driveMsg.textContent = '✓ Loaded from Google Drive!'; }
+      toast('Loaded from Google Drive ☁', 'success');
+    } catch(err) {
+      updateDriveStatus('error');
+      if (driveMsg) { driveMsg.style.color = 'var(--accent3)'; driveMsg.textContent = '✗ ' + err.message; }
+      toast('Drive load failed: ' + err.message, 'error');
+    }
+  });
+}
+
+function showClientIdHelp() {
+  document.getElementById('driveModalStatus').innerHTML = `
+    <div style="color:var(--accent2);margin-top:8px;font-size:0.79rem;line-height:1.8;background:var(--surface2);border-radius:10px;padding:14px;">
+      <strong style="color:var(--text);">⚙ One-time setup required</strong><br>
+      You need a free Google OAuth Client ID. Open <code style="color:var(--accent)">home_loan_tracker_v2.html</code>
+      in a text editor and replace <code style="color:var(--accent)">YOUR_CLIENT_ID_HERE</code> with your Client ID.<br><br>
+      <strong style="color:var(--text);">Steps:</strong><br>
+      1. Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent4);">console.cloud.google.com</a><br>
+      2. Create a project → APIs & Services → Enable <strong>Google Drive API</strong><br>
+      3. Credentials → Create → OAuth 2.0 Client ID → Web Application<br>
+      4. Add <code style="color:var(--accent)">http://localhost:8765</code> to <em>Authorised JavaScript origins</em><br>
+      5. Copy the Client ID and paste it in the HTML file where indicated<br>
+      6. Launch with <code style="color:var(--accent)">python3 serve.py</code>
+    </div>`;
+  openDriveModal();
+}
+
+function openDriveModal() {
+  document.getElementById('driveModal').classList.remove('hidden');
+}
+function closeDriveModal() {
+  document.getElementById('driveModal').classList.add('hidden');
+}
+
+// =====================================================
+// INIT
+// =====================================================
+document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+document.getElementById('txnDate').value = new Date().toISOString().split('T')[0];
+load();
+renderSettings();
+renderDashboard();
+updateDriveStatus('idle');
+
+// Register PWA Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
